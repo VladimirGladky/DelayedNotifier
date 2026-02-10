@@ -1,0 +1,49 @@
+version: "3.5"
+
+services:
+  postgres:
+    container_name: postgres_container_dn
+    image: postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    ports:
+      - "5435:5432"
+    restart: unless-stopped
+    networks:
+      - mynetwork
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  chat_service:
+    container_name: notify_service
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4049:4049"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - mynetwork
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  mynetwork:
+    driver: bridge
