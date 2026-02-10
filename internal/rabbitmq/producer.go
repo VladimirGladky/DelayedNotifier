@@ -23,13 +23,15 @@ func NewProducer(cl *ClientRabbitMQ, cfg *config.Config) *Producer {
 	}
 }
 
-func (p *Producer) Publish(data []byte, ctx context.Context, routingKey string) error {
+func (p *Producer) Publish(data []byte, ctx context.Context, routingKey string, delay time.Duration) error {
 	err := p.publisher.Publish(
 		ctx,
 		data,
 		routingKey,
 		rabbitmq.WithExpiration(5*time.Minute),
-		rabbitmq.WithHeaders(amqp.Table{"x-service": "auth"}),
+		rabbitmq.WithHeaders(amqp.Table{
+			"x-delay": delay.Milliseconds(),
+		}),
 	)
 	if err != nil {
 		zlog.Logger.Info().Err(err).Str("routing_key", routingKey).Msg("publish fail")

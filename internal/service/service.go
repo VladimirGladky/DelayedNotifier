@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/wb-go/wbf/config"
@@ -39,11 +40,19 @@ func New(producer *rabbitmq.Producer, repo NotificationRepositoryInterface, tele
 
 func (service *DelayedNotifierService) CreateNotification(nf *models.Notification) (string, error) {
 	nf.Id = uuid.New().String()
+	sendTime, err := time.Parse(time.RFC3339, nf.Time)
+	if err != nil {
+		return "", fmt.Errorf("invalid time format: %w", err)
+	}
+	delay := time.Until(sendTime)
+	if delay < 0 {
+		delay = 0
+	}
 	data, err := json.Marshal(nf)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal notification: %w", err)
 	}
-	if err = service.producer.Publish(data, service.ctx, service.cfg.GetString("routing_key")); err != nil {
+	if err = service.producer.Publish(data, service.ctx, service.cfg.GetString("routing_key"), delay); err != nil {
 		return "", err
 	}
 	nf.Status = "created"

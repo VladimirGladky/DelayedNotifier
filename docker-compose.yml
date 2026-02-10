@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_DB: ${POSTGRES_DBNAME}
     volumes:
       - postgres_data:/var/lib/postgresql
     ports:
@@ -16,32 +16,29 @@ services:
     networks:
       - mynetwork
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DBNAME}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
-  chat_service:
-    container_name: notify_service
+  rabbitmq:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.rabbitmq
+    container_name: rabbitmq
     ports:
-      - "4049:4049"
+      - "5672:5672"
+      - "15672:15672"
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-    depends_on:
-      postgres:
-        condition: service_healthy
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
     networks:
       - mynetwork
-    restart: unless-stopped
 
 volumes:
+  rabbitmq_data:
   postgres_data:
 
 networks:
