@@ -12,9 +12,10 @@ import (
 )
 
 type ServiceDelayedNotifierInterface interface {
-	CreateNotification(*models.Notification) (int, error)
+	CreateNotification(*models.Notification) (string, error)
 	GetNotification(id string) (*models.Notification, error)
-	NotifyDeleteHandler(id string) error
+	DeleteNotification(id string) error
+	ProcessNotification(nf *models.Notification) error
 }
 
 type Server struct {
@@ -73,7 +74,7 @@ func (s *Server) NotifyGetHandler() gin.HandlerFunc {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, models.Notification{Id: notification.Id, Message: notification.Message, Time: notification.Time})
+		c.JSON(http.StatusOK, gin.H{"status": notification.Status})
 	}
 }
 
@@ -86,7 +87,7 @@ func (s *Server) NotifyDeleteHandler() gin.HandlerFunc {
 			}
 		}()
 		id := c.Param("id")
-		err := s.Service.NotifyDeleteHandler(id)
+		err := s.Service.DeleteNotification(id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return

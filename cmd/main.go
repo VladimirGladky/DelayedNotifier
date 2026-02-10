@@ -1,6 +1,9 @@
 package main
 
-import "github.com/wb-go/wbf/config"
+import (
+	"github.com/wb-go/wbf/config"
+	"github.com/wb-go/wbf/zlog"
+)
 
 func main() {
 	cfg := config.New()
@@ -8,5 +11,6 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	zlog.Init()
 
 }
