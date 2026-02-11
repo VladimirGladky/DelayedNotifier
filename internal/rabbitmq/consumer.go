@@ -2,6 +2,7 @@ package rabbitmq
 
 import (
 	"DelayedNotifier/internal/models"
+	"DelayedNotifier/pkg/logger"
 	"context"
 	"encoding/json"
 	"log"
@@ -9,7 +10,7 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/wb-go/wbf/config"
 	"github.com/wb-go/wbf/rabbitmq"
-	"github.com/wb-go/wbf/zlog"
+	"go.uber.org/zap"
 )
 
 type Consumer struct {
@@ -29,31 +30,27 @@ func NewConsumer(client *ClientRabbitMQ, cfg *config.Config, handler func(*model
 	}
 
 	amqpHandler := func(ctx context.Context, d amqp.Delivery) error {
-		zlog.Logger.Debug().
-			Str("queue", cfg.GetString("CONSUMER_QUEUE")).
-			Str("message_id", d.MessageId).
-			Msg("Received message from queue")
+		logger.GetLoggerFromCtx(ctx).Debug("Received message from queue",
+			zap.String("queue", cfg.GetString("CONSUMER_QUEUE")),
+			zap.String("message_id", d.MessageId))
 
 		var notification models.Notification
 		if err := json.Unmarshal(d.Body, &notification); err != nil {
-			zlog.Logger.Error().
-				Err(err).
-				Str("body", string(d.Body)).
-				Msg("Failed to unmarshal notification")
+			logger.GetLoggerFromCtx(ctx).Error("Failed to unmarshal notification",
+				zap.Error(err),
+				zap.String("body", string(d.Body)))
 			return err
 		}
 
 		if err := handler(&notification); err != nil {
-			zlog.Logger.Error().
-				Err(err).
-				Str("notification_id", notification.Id).
-				Msg("Failed to process notification")
+			logger.GetLoggerFromCtx(ctx).Error("Failed to process notification",
+				zap.Error(err),
+				zap.String("notification_id", notification.Id))
 			return err
 		}
 
-		zlog.Logger.Info().
-			Str("notification_id", notification.Id).
-			Msg("Notification processed successfully")
+		logger.GetLoggerFromCtx(ctx).Info("Notification processed successfully",
+			zap.String("notification_id", notification.Id))
 
 		return nil
 	}

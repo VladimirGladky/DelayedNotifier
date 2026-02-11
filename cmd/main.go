@@ -2,10 +2,10 @@ package main
 
 import (
 	"DelayedNotifier/internal/app"
+	"DelayedNotifier/pkg/logger"
 	"context"
 
 	"github.com/wb-go/wbf/config"
-	"github.com/wb-go/wbf/zlog"
 )
 
 func main() {
@@ -15,7 +15,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	zlog.Init()
-	newApp := app.NewApp(cfg, context.Background())
+
+	ctx, err := logger.New(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
+	newApp := app.NewApp(cfg, ctx)
 	newApp.MustRun()
 }

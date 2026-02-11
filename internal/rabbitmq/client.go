@@ -1,6 +1,7 @@
 package rabbitmq
 
 import (
+	"DelayedNotifier/pkg/logger"
 	"context"
 	"time"
 
@@ -8,7 +9,7 @@ import (
 	"github.com/wb-go/wbf/config"
 	"github.com/wb-go/wbf/rabbitmq"
 	"github.com/wb-go/wbf/retry"
-	"github.com/wb-go/wbf/zlog"
+	"go.uber.org/zap"
 )
 
 type ClientRabbitMQ struct {
@@ -67,10 +68,10 @@ func (c *ClientRabbitMQ) SetupInfrastructure() error {
 		},
 	)
 	if err != nil {
-		zlog.Logger.Error().Err(err).Str("exchange", delayedExchange).Msg("Failed to declare delayed exchange")
+		logger.GetLoggerFromCtx(c.ctx).Error("Failed to declare delayed exchange", zap.Error(err), zap.String("exchange", delayedExchange))
 		return err
 	}
-	zlog.Logger.Info().Str("exchange", delayedExchange).Msg("Delayed exchange declared")
+	logger.GetLoggerFromCtx(c.ctx).Info("Delayed exchange declared", zap.String("exchange", delayedExchange))
 
 	dlxExchange := c.cfg.GetString("DLX_EXCHANGE")
 	err = c.client.DeclareExchange(
@@ -82,10 +83,10 @@ func (c *ClientRabbitMQ) SetupInfrastructure() error {
 		nil,
 	)
 	if err != nil {
-		zlog.Logger.Error().Err(err).Str("exchange", dlxExchange).Msg("Failed to declare DLX exchange")
+		logger.GetLoggerFromCtx(c.ctx).Error("Failed to declare DLX exchange", zap.Error(err), zap.String("exchange", dlxExchange))
 		return err
 	}
-	zlog.Logger.Info().Str("exchange", dlxExchange).Msg("DLX exchange declared")
+	logger.GetLoggerFromCtx(c.ctx).Info("DLX exchange declared", zap.String("exchange", dlxExchange))
 
 	mainQueue := c.cfg.GetString("CONSUMER_QUEUE")
 	routingKey := c.cfg.GetString("ROUTING_KEY")
@@ -104,14 +105,13 @@ func (c *ClientRabbitMQ) SetupInfrastructure() error {
 		},
 	)
 	if err != nil {
-		zlog.Logger.Error().Err(err).Str("queue", mainQueue).Msg("Failed to declare main queue")
+		logger.GetLoggerFromCtx(c.ctx).Error("Failed to declare main queue", zap.Error(err), zap.String("queue", mainQueue))
 		return err
 	}
-	zlog.Logger.Info().
-		Str("queue", mainQueue).
-		Str("exchange", delayedExchange).
-		Str("routing_key", routingKey).
-		Msg("Main queue declared and bound")
+	logger.GetLoggerFromCtx(c.ctx).Info("Main queue declared and bound",
+		zap.String("queue", mainQueue),
+		zap.String("exchange", delayedExchange),
+		zap.String("routing_key", routingKey))
 
 	dlqQueue := "dlq_queue"
 	err = c.client.DeclareQueue(
@@ -124,15 +124,14 @@ func (c *ClientRabbitMQ) SetupInfrastructure() error {
 		nil,
 	)
 	if err != nil {
-		zlog.Logger.Error().Err(err).Str("queue", dlqQueue).Msg("Failed to declare DLQ")
+		logger.GetLoggerFromCtx(c.ctx).Error("Failed to declare DLQ", zap.Error(err), zap.String("queue", dlqQueue))
 		return err
 	}
-	zlog.Logger.Info().
-		Str("queue", dlqQueue).
-		Str("exchange", dlxExchange).
-		Str("routing_key", dlqRoutingKey).
-		Msg("DLQ declared and bound")
+	logger.GetLoggerFromCtx(c.ctx).Info("DLQ declared and bound",
+		zap.String("queue", dlqQueue),
+		zap.String("exchange", dlxExchange),
+		zap.String("routing_key", dlqRoutingKey))
 
-	zlog.Logger.Info().Msg("RabbitMQ infrastructure setup completed successfully")
+	logger.GetLoggerFromCtx(c.ctx).Info("RabbitMQ infrastructure setup completed successfully")
 	return nil
 }

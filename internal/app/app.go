@@ -6,6 +6,7 @@ import (
 	"DelayedNotifier/internal/service"
 	"DelayedNotifier/internal/telegram"
 	"DelayedNotifier/internal/transport"
+	"DelayedNotifier/pkg/logger"
 	"DelayedNotifier/pkg/postgres"
 	"context"
 	"os"
@@ -14,7 +15,7 @@ import (
 	"syscall"
 
 	"github.com/wb-go/wbf/config"
-	"github.com/wb-go/wbf/zlog"
+	"go.uber.org/zap"
 )
 
 type App struct {
@@ -47,7 +48,7 @@ func NewApp(cfg *config.Config, parentCtx context.Context) *App {
 		panic(err)
 	}
 
-	telegramClient, err := telegram.NewClient(cfg)
+	telegramClient, err := telegram.NewClient(cfg, ctx)
 	if err != nil {
 		panic(err)
 	}
@@ -79,9 +80,9 @@ func (a *App) Run() error {
 	a.wg.Add(1)
 	go func() {
 		defer a.wg.Done()
-		zlog.Logger.Info().Str("service", "http_server").Msg("Starting HTTP server")
+		logger.GetLoggerFromCtx(a.ctx).Info("starting server")
 		if err := a.HiTalentServer.Run(); err != nil {
-			zlog.Logger.Error().Err(err).Msg("HTTP server error")
+			logger.GetLoggerFromCtx(a.ctx).Error("HTTP server error", zap.Error(err))
 			errCh <- err
 		}
 	}()
@@ -89,9 +90,9 @@ func (a *App) Run() error {
 	a.wg.Add(1)
 	go func() {
 		defer a.wg.Done()
-		zlog.Logger.Info().Str("service", "rabbitmq_consumer").Msg("Starting RabbitMQ consumer")
+		logger.GetLoggerFromCtx(a.ctx).Info("Starting RabbitMQ consumer", zap.String("service", "rabbitmq_consumer"))
 		a.rabbitmqConsumer.Start(a.ctx)
-		zlog.Logger.Info().Str("service", "rabbitmq_consumer").Msg("Consumer stopped")
+		logger.GetLoggerFromCtx(a.ctx).Info("Consumer stopped", zap.String("service", "rabbitmq_consumer"))
 	}()
 
 	sigCh := make(chan os.Signal, 1)
@@ -99,19 +100,19 @@ func (a *App) Run() error {
 
 	select {
 	case err := <-errCh:
-		zlog.Logger.Error().Err(err).Msg("Application error, shutting down")
+		logger.GetLoggerFromCtx(a.ctx).Error("Application error, shutting down", zap.Error(err))
 		a.cancel()
 	case sig := <-sigCh:
-		zlog.Logger.Info().Str("signal", sig.String()).Msg("Received shutdown signal")
+		logger.GetLoggerFromCtx(a.ctx).Info("Received shutdown signal", zap.String("signal", sig.String()))
 		a.cancel()
 	}
 
-	zlog.Logger.Info().Msg("Waiting for goroutines to finish")
+	logger.GetLoggerFromCtx(a.ctx).Info("Waiting for goroutines to finish")
 	a.wg.Wait()
 
-	zlog.Logger.Info().Msg("Closing connections")
+	logger.GetLoggerFromCtx(a.ctx).Info("Closing connections")
 	a.rabbitmqClient.Close()
 
-	zlog.Logger.Info().Msg("Application stopped gracefully")
+	logger.GetLoggerFromCtx(a.ctx).Info("Application stopped gracefully")
 	return nil
 }

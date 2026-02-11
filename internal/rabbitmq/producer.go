@@ -1,13 +1,14 @@
 package rabbitmq
 
 import (
+	"DelayedNotifier/pkg/logger"
 	"context"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/wb-go/wbf/config"
 	"github.com/wb-go/wbf/rabbitmq"
-	"github.com/wb-go/wbf/zlog"
+	"go.uber.org/zap"
 )
 
 type Producer struct {
@@ -24,10 +25,9 @@ func NewProducer(cl *ClientRabbitMQ, cfg *config.Config) *Producer {
 }
 
 func (p *Producer) Publish(data []byte, ctx context.Context, routingKey string, delay time.Duration) error {
-	zlog.Logger.Info().
-		Str("routing_key", routingKey).
-		Dur("delay", delay).
-		Msg("Publishing message to RabbitMQ")
+	logger.GetLoggerFromCtx(ctx).Info("Publishing message to RabbitMQ",
+		zap.String("routing_key", routingKey),
+		zap.Duration("delay", delay))
 
 	err := p.publisher.Publish(
 		ctx,
@@ -38,16 +38,14 @@ func (p *Producer) Publish(data []byte, ctx context.Context, routingKey string, 
 		}),
 	)
 	if err != nil {
-		zlog.Logger.Error().
-			Err(err).
-			Str("routing_key", routingKey).
-			Msg("Failed to publish message")
+		logger.GetLoggerFromCtx(ctx).Error("Failed to publish message",
+			zap.Error(err),
+			zap.String("routing_key", routingKey))
 		return err
 	}
 
-	zlog.Logger.Info().
-		Str("routing_key", routingKey).
-		Msg("Message published successfully")
+	logger.GetLoggerFromCtx(ctx).Info("Message published successfully",
+		zap.String("routing_key", routingKey))
 
 	return nil
 }

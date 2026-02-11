@@ -4,6 +4,7 @@ import (
 	"DelayedNotifier/internal/models"
 	"DelayedNotifier/internal/rabbitmq"
 	"DelayedNotifier/internal/telegram"
+	"DelayedNotifier/pkg/logger"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/wb-go/wbf/config"
-	"github.com/wb-go/wbf/zlog"
+	"go.uber.org/zap"
 )
 
 type NotificationRepositoryInterface interface {
@@ -47,9 +48,8 @@ func (service *DelayedNotifierService) CreateNotification(nf *models.Notificatio
 
 	if nf.Time == "" {
 		delay = 0
-		zlog.Logger.Info().
-			Str("notification_id", nf.Id).
-			Msg("No time specified, sending immediately")
+		logger.GetLoggerFromCtx(service.ctx).Info("No time specified, sending immediately",
+			zap.String("notification_id", nf.Id))
 	} else {
 		sendTime, err := time.Parse(time.RFC3339, nf.Time)
 		if err != nil {
@@ -59,20 +59,18 @@ func (service *DelayedNotifierService) CreateNotification(nf *models.Notificatio
 		now := time.Now()
 		delay = time.Until(sendTime)
 
-		zlog.Logger.Info().
-			Str("notification_id", nf.Id).
-			Str("current_time", now.Format(time.RFC3339)).
-			Str("send_time", sendTime.Format(time.RFC3339)).
-			Dur("delay_seconds", delay).
-			Float64("delay_milliseconds", float64(delay.Milliseconds())).
-			Msg("Calculated delay for notification")
+		logger.GetLoggerFromCtx(service.ctx).Info("Calculated delay for notification",
+			zap.String("notification_id", nf.Id),
+			zap.String("current_time", now.Format(time.RFC3339)),
+			zap.String("send_time", sendTime.Format(time.RFC3339)),
+			zap.Duration("delay_seconds", delay),
+			zap.Float64("delay_milliseconds", float64(delay.Milliseconds())))
 
 		if delay < 0 {
-			zlog.Logger.Warn().
-				Str("notification_id", nf.Id).
-				Str("requested_time", nf.Time).
-				Dur("was_negative", delay).
-				Msg("Requested time is in the past, setting delay to 0")
+			logger.GetLoggerFromCtx(service.ctx).Warn("Requested time is in the past, setting delay to 0",
+				zap.String("notification_id", nf.Id),
+				zap.String("requested_time", nf.Time),
+				zap.Duration("was_negative", delay))
 			delay = 0
 		}
 	}
@@ -122,11 +120,10 @@ func (service *DelayedNotifierService) ProcessNotification(nf *models.Notificati
 		return fmt.Errorf("failed to update status to sending: %w", err)
 	}
 
-	zlog.Logger.Info().
-		Str("notification_id", nf.Id).
-		Int64("chat_id", nf.ChatId).
-		Str("message", nf.Message).
-		Msg("Sending notification via Telegram")
+	logger.GetLoggerFromCtx(service.ctx).Info("Sending notification via Telegram",
+		zap.String("notification_id", nf.Id),
+		zap.Int64("chat_id", nf.ChatId),
+		zap.String("message", nf.Message))
 
 	if err := service.telegramClient.SendMessage(nf.ChatId, nf.Message); err != nil {
 		err = service.repo.UpdateNotificationStatus(nf.Id, "failed")
@@ -140,8 +137,7 @@ func (service *DelayedNotifierService) ProcessNotification(nf *models.Notificati
 		return fmt.Errorf("failed to update status to sent: %w", err)
 	}
 
-	zlog.Logger.Info().
-		Str("notification_id", nf.Id).
-		Msg("Notification sent successfully")
+	logger.GetLoggerFromCtx(service.ctx).Info("Notification sent successfully",
+		zap.String("notification_id", nf.Id))
 	return nil
 }

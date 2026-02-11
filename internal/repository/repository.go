@@ -2,13 +2,14 @@ package repository
 
 import (
 	"DelayedNotifier/internal/models"
+	"DelayedNotifier/pkg/logger"
 	"context"
 	"database/sql"
 	"errors"
 	"fmt"
 
 	"github.com/wb-go/wbf/dbpg"
-	"github.com/wb-go/wbf/zlog"
+	"go.uber.org/zap"
 )
 
 type NotificationRepository struct {
@@ -39,15 +40,13 @@ func (r *NotificationRepository) CreateNotification(notification *models.Notific
 		notification.ChatId,
 	)
 	if err != nil {
-		zlog.Logger.Error().
-			Err(err).
-			Str("notification_id", notification.Id).
-			Msg("Failed to create notification in DB")
+		logger.GetLoggerFromCtx(r.ctx).Error("Failed to create notification in DB",
+			zap.Error(err),
+			zap.String("notification_id", notification.Id))
 		return err
 	}
-	zlog.Logger.Info().
-		Str("notification_id", notification.Id).
-		Msg("Notification created in DB")
+	logger.GetLoggerFromCtx(r.ctx).Info("Notification created in DB",
+		zap.String("notification_id", notification.Id))
 	return nil
 }
 
@@ -72,10 +71,9 @@ func (r *NotificationRepository) GetNotification(id string) (*models.Notificatio
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("notification not found: %s", id)
 		}
-		zlog.Logger.Error().
-			Err(err).
-			Str("notification_id", id).
-			Msg("Failed to get notification from DB")
+		logger.GetLoggerFromCtx(r.ctx).Error("Failed to get notification from DB",
+			zap.Error(err),
+			zap.String("notification_id", id))
 		return nil, fmt.Errorf("failed to get notification: %w", err)
 	}
 
@@ -90,18 +88,16 @@ func (r *NotificationRepository) UpdateNotificationStatus(id string, status stri
   	`
 	_, err := r.db.ExecContext(r.ctx, query, status, id)
 	if err != nil {
-		zlog.Logger.Error().
-			Err(err).
-			Str("notification_id", id).
-			Str("status", status).
-			Msg("Failed to update notification status")
+		logger.GetLoggerFromCtx(r.ctx).Error("Failed to update notification status",
+			zap.Error(err),
+			zap.String("notification_id", id),
+			zap.String("status", status))
 		return fmt.Errorf("failed to update notification status: %w", err)
 	}
 
-	zlog.Logger.Debug().
-		Str("notification_id", id).
-		Str("status", status).
-		Msg("Notification status updated")
+	logger.GetLoggerFromCtx(r.ctx).Debug("Notification status updated",
+		zap.String("notification_id", id),
+		zap.String("status", status))
 	return nil
 }
 
@@ -114,10 +110,9 @@ func (r *NotificationRepository) DeleteNotification(id string) error {
 
 	result, err := r.db.ExecContext(r.ctx, query, id)
 	if err != nil {
-		zlog.Logger.Error().
-			Err(err).
-			Str("notification_id", id).
-			Msg("Failed to delete notification")
+		logger.GetLoggerFromCtx(r.ctx).Error("Failed to delete notification",
+			zap.Error(err),
+			zap.String("notification_id", id))
 		return fmt.Errorf("failed to delete notification: %w", err)
 	}
 
@@ -126,8 +121,7 @@ func (r *NotificationRepository) DeleteNotification(id string) error {
 		return fmt.Errorf("notification not found: %s", id)
 	}
 
-	zlog.Logger.Info().
-		Str("notification_id", id).
-		Msg("Notification cancelled")
+	logger.GetLoggerFromCtx(r.ctx).Info("Notification cancelled",
+		zap.String("notification_id", id))
 	return nil
 }
