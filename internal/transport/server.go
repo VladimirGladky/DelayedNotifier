@@ -24,8 +24,8 @@ type Server struct {
 	Service ServiceDelayedNotifierInterface
 }
 
-func NewServer(ctx context.Context, cfg *config.Config) *Server {
-	return &Server{ctx: ctx, cfg: cfg}
+func NewServer(ctx context.Context, cfg *config.Config, srv ServiceDelayedNotifierInterface) *Server {
+	return &Server{ctx: ctx, cfg: cfg, Service: srv}
 }
 
 func (s *Server) Run() error {

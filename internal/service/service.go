@@ -30,29 +30,57 @@ type DelayedNotifierService struct {
 	telegramClient *telegram.Client
 }
 
-func New(producer *rabbitmq.Producer, repo NotificationRepositoryInterface, telegramClient *telegram.Client) *DelayedNotifierService {
+func New(producer *rabbitmq.Producer, repo NotificationRepositoryInterface, telegramClient *telegram.Client, ctx context.Context, cfg *config.Config) *DelayedNotifierService {
 	return &DelayedNotifierService{
 		repo:           repo,
 		producer:       producer,
 		telegramClient: telegramClient,
+		ctx:            ctx,
+		cfg:            cfg,
 	}
 }
 
 func (service *DelayedNotifierService) CreateNotification(nf *models.Notification) (string, error) {
 	nf.Id = uuid.New().String()
-	sendTime, err := time.Parse(time.RFC3339, nf.Time)
-	if err != nil {
-		return "", fmt.Errorf("invalid time format: %w", err)
-	}
-	delay := time.Until(sendTime)
-	if delay < 0 {
+
+	var delay time.Duration
+
+	if nf.Time == "" {
 		delay = 0
+		zlog.Logger.Info().
+			Str("notification_id", nf.Id).
+			Msg("No time specified, sending immediately")
+	} else {
+		sendTime, err := time.Parse(time.RFC3339, nf.Time)
+		if err != nil {
+			return "", fmt.Errorf("invalid time format (use RFC3339): %w", err)
+		}
+
+		now := time.Now()
+		delay = time.Until(sendTime)
+
+		zlog.Logger.Info().
+			Str("notification_id", nf.Id).
+			Str("current_time", now.Format(time.RFC3339)).
+			Str("send_time", sendTime.Format(time.RFC3339)).
+			Dur("delay_seconds", delay).
+			Float64("delay_milliseconds", float64(delay.Milliseconds())).
+			Msg("Calculated delay for notification")
+
+		if delay < 0 {
+			zlog.Logger.Warn().
+				Str("notification_id", nf.Id).
+				Str("requested_time", nf.Time).
+				Dur("was_negative", delay).
+				Msg("Requested time is in the past, setting delay to 0")
+			delay = 0
+		}
 	}
 	data, err := json.Marshal(nf)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal notification: %w", err)
 	}
-	if err = service.producer.Publish(data, service.ctx, service.cfg.GetString("routing_key"), delay); err != nil {
+	if err = service.producer.Publish(data, service.ctx, service.cfg.GetString("ROUTING_KEY"), delay); err != nil {
 		return "", err
 	}
 	nf.Status = "created"

@@ -16,7 +16,7 @@ type Producer struct {
 }
 
 func NewProducer(cl *ClientRabbitMQ, cfg *config.Config) *Producer {
-	publisher := rabbitmq.NewPublisher(cl.client, cfg.GetString("publisher_exchange"), "application/json")
+	publisher := rabbitmq.NewPublisher(cl.client, cfg.GetString("PUBLISHER_EXCHANGE"), "application/json")
 	return &Producer{
 		publisher: publisher,
 		cfg:       cfg,
@@ -24,18 +24,30 @@ func NewProducer(cl *ClientRabbitMQ, cfg *config.Config) *Producer {
 }
 
 func (p *Producer) Publish(data []byte, ctx context.Context, routingKey string, delay time.Duration) error {
+	zlog.Logger.Info().
+		Str("routing_key", routingKey).
+		Dur("delay", delay).
+		Msg("Publishing message to RabbitMQ")
+
 	err := p.publisher.Publish(
 		ctx,
 		data,
 		routingKey,
-		rabbitmq.WithExpiration(5*time.Minute),
 		rabbitmq.WithHeaders(amqp.Table{
 			"x-delay": delay.Milliseconds(),
 		}),
 	)
 	if err != nil {
-		zlog.Logger.Info().Err(err).Str("routing_key", routingKey).Msg("publish fail")
+		zlog.Logger.Error().
+			Err(err).
+			Str("routing_key", routingKey).
+			Msg("Failed to publish message")
 		return err
 	}
+
+	zlog.Logger.Info().
+		Str("routing_key", routingKey).
+		Msg("Message published successfully")
+
 	return nil
 }
