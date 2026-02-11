@@ -19,18 +19,18 @@ type Consumer struct {
 
 func NewConsumer(client *ClientRabbitMQ, cfg *config.Config, handler func(*models.Notification) error) *Consumer {
 	queueArgs := amqp.Table{
-		"x-dead-letter-exchange":    cfg.GetString("dlx_exchange"),
-		"x-dead-letter-routing-key": cfg.GetString("dlq_routing_key"),
+		"x-dead-letter-exchange":    cfg.GetString("DLX_EXCHANGE"),
+		"x-dead-letter-routing-key": cfg.GetString("DLQ_ROUTING_KEY"),
 	}
 
 	consumerCfg := rabbitmq.ConsumerConfig{
-		Queue: cfg.GetString("consumer_queue"),
+		Queue: cfg.GetString("CONSUMER_QUEUE"),
 		Args:  queueArgs,
 	}
 
 	amqpHandler := func(ctx context.Context, d amqp.Delivery) error {
 		zlog.Logger.Debug().
-			Str("queue", cfg.GetString("consumer_queue")).
+			Str("queue", cfg.GetString("CONSUMER_QUEUE")).
 			Str("message_id", d.MessageId).
 			Msg("Received message from queue")
 
