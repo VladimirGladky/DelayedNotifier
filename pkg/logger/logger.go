@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 const (
@@ -35,7 +36,13 @@ func (l Logger) Fatal(msg string, fields ...zap.Field) {
 }
 
 func New(ctx context.Context) (context.Context, error) {
-	logger, err := zap.NewProduction()
+	config := zap.NewDevelopmentConfig()
+	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+
+	logger, err := config.Build(
+		zap.AddStacktrace(zapcore.ErrorLevel),
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -26,9 +26,15 @@ func NewClientRabbitMQ(cfg *config.Config, ctx context.Context) *ClientRabbitMQ 
 }
 
 func (c *ClientRabbitMQ) Init() error {
-	strategy := retry.Strategy{
+	producingStrategy := retry.Strategy{
 		Attempts: 3,
 		Delay:    3 * time.Second,
+		Backoff:  2,
+	}
+
+	consumingStrategy := retry.Strategy{
+		Attempts: 4,
+		Delay:    2 * time.Second,
 		Backoff:  2,
 	}
 
@@ -37,8 +43,8 @@ func (c *ClientRabbitMQ) Init() error {
 		ConnectionName: c.cfg.GetString("RABBITMQ_CONNECTION_NAME"),
 		ConnectTimeout: time.Duration(c.cfg.GetInt("CONNECT_TIMEOUT")) * time.Second,
 		Heartbeat:      time.Duration(c.cfg.GetInt("HEARTBEAT")) * time.Second,
-		ProducingStrat: strategy,
-		ConsumingStrat: strategy,
+		ProducingStrat: producingStrategy,
+		ConsumingStrat: consumingStrategy,
 	}
 
 	client, err := rabbitmq.NewClient(cfg)

@@ -43,9 +43,6 @@ func NewConsumer(client *ClientRabbitMQ, cfg *config.Config, handler func(*model
 		}
 
 		if err := handler(&notification); err != nil {
-			logger.GetLoggerFromCtx(ctx).Error("Failed to process notification",
-				zap.Error(err),
-				zap.String("notification_id", notification.Id))
 			return err
 		}
 

@@ -36,9 +36,6 @@ func (c *Client) SendMessage(chatId int64, message string) error {
 
 	_, err := c.bot.Send(msg)
 	if err != nil {
-		logger.GetLoggerFromCtx(c.ctx).Error("Failed to send telegram message",
-			zap.Error(err),
-			zap.Int64("chat_id", chatId))
 		return err
 	}
 
