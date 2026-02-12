@@ -45,39 +45,36 @@ func (r *NotificationRepository) CreateNotification(notification *models.Notific
 			zap.String("notification_id", notification.Id))
 		return err
 	}
+
 	logger.GetLoggerFromCtx(r.ctx).Info("Notification created in DB",
 		zap.String("notification_id", notification.Id))
 	return nil
 }
 
-func (r *NotificationRepository) GetNotification(id string) (*models.Notification, error) {
+func (r *NotificationRepository) GetNotificationStatus(id string) (string, error) {
 	query := `
-  		SELECT id, message, time, status, chat_id
+  		SELECT status
   		FROM notifications
   		WHERE id = $1
   	`
 
-	notification := &models.Notification{}
+	var status string
 
 	err := r.db.QueryRowContext(r.ctx, query, id).Scan(
-		&notification.Id,
-		&notification.Message,
-		&notification.Time,
-		&notification.Status,
-		&notification.ChatId,
+		&status,
 	)
 
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("notification not found: %s", id)
+			return "", fmt.Errorf("notification not found: %s", id)
 		}
 		logger.GetLoggerFromCtx(r.ctx).Error("Failed to get notification from DB",
 			zap.Error(err),
 			zap.String("notification_id", id))
-		return nil, fmt.Errorf("failed to get notification: %w", err)
+		return "", fmt.Errorf("failed to get notification: %w", err)
 	}
 
-	return notification, nil
+	return status, nil
 }
 
 func (r *NotificationRepository) UpdateNotificationStatus(id string, status string) error {
@@ -103,8 +100,7 @@ func (r *NotificationRepository) UpdateNotificationStatus(id string, status stri
 
 func (r *NotificationRepository) DeleteNotification(id string) error {
 	query := `
-  		UPDATE notifications
-  		SET status = 'cancelled'
+  		DELETE FROM notifications
   		WHERE id = $1
   	`
 
@@ -121,7 +117,7 @@ func (r *NotificationRepository) DeleteNotification(id string) error {
 		return fmt.Errorf("notification not found: %s", id)
 	}
 
-	logger.GetLoggerFromCtx(r.ctx).Info("Notification cancelled",
+	logger.GetLoggerFromCtx(r.ctx).Info("Notification deleted from DB",
 		zap.String("notification_id", id))
 	return nil
 }

@@ -13,7 +13,7 @@ import (
 
 type ServiceDelayedNotifierInterface interface {
 	CreateNotification(*models.Notification) (string, error)
-	GetNotification(id string) (*models.Notification, error)
+	GetNotificationStatus(id string) (string, error)
 	DeleteNotification(id string) error
 	ProcessNotification(nf *models.Notification) error
 }
@@ -69,12 +69,12 @@ func (s *Server) NotifyGetHandler() gin.HandlerFunc {
 			}
 		}()
 		id := c.Param("id")
-		notification, err := s.Service.GetNotification(id)
+		status, err := s.Service.GetNotificationStatus(id)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"status": notification.Status})
+		c.JSON(http.StatusOK, gin.H{"status": status})
 	}
 }
 

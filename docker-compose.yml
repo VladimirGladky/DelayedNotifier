@@ -37,9 +37,38 @@ services:
     networks:
       - mynetwork
 
+  redis:
+    container_name: redis_container_dn
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - mynetwork
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  redis-insight:
+    container_name: redis_insight_dn
+    image: redis/redisinsight:latest
+    ports:
+      - "5540:5540"
+    volumes:
+      - redis_insight_data:/data
+    restart: unless-stopped
+    networks:
+      - mynetwork
+
 volumes:
   rabbitmq_data:
   postgres_data:
+  redis_data:
+  redis_insight_data:
 
 networks:
   mynetwork:

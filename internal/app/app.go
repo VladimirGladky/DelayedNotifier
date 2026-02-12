@@ -9,6 +9,7 @@ import (
 	"DelayedNotifier/internal/transport"
 	"DelayedNotifier/pkg/logger"
 	"DelayedNotifier/pkg/postgres"
+	redispkg "DelayedNotifier/pkg/redis"
 	"context"
 	"os"
 	"os/signal"
@@ -46,6 +47,13 @@ func NewApp(cfg *config.Config, parentCtx context.Context) *App {
 		logger.GetLoggerFromCtx(ctx).Info("Database migrations completed successfully")
 	}
 
+	redisClient, err := redispkg.NewRedisClient(cfg, ctx)
+	if err != nil {
+		logger.GetLoggerFromCtx(ctx).Error("Failed to connect to Redis", zap.Error(err))
+		panic(err)
+	}
+	logger.GetLoggerFromCtx(ctx).Info("Connected to Redis successfully")
+
 	repo := repository.NewNotificationRepository(ctx, db)
 	rabbitMQClient := rabbitmq.NewClientRabbitMQ(cfg, ctx)
 	err = rabbitMQClient.Init()
@@ -64,7 +72,7 @@ func NewApp(cfg *config.Config, parentCtx context.Context) *App {
 	}
 
 	producer := rabbitmq.NewProducer(rabbitMQClient, cfg)
-	srv := service.New(producer, repo, telegramClient, ctx, cfg)
+	srv := service.New(producer, repo, telegramClient, redisClient, ctx, cfg)
 	consumer := rabbitmq.NewConsumer(rabbitMQClient, cfg, srv.ProcessNotification)
 	server := transport.NewServer(ctx, cfg, srv)
 
