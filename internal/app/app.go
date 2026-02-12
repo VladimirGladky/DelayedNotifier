@@ -1,6 +1,7 @@
 package app
 
 import (
+	"DelayedNotifier/internal/migrations"
 	"DelayedNotifier/internal/rabbitmq"
 	"DelayedNotifier/internal/repository"
 	"DelayedNotifier/internal/service"
@@ -34,6 +35,15 @@ func NewApp(cfg *config.Config, parentCtx context.Context) *App {
 	db, err := postgres.NewPostgres(cfg)
 	if err != nil {
 		panic(err)
+	}
+
+	applied, err := migrations.RunMigrations(db.Master, "./migrations")
+	if err != nil {
+		logger.GetLoggerFromCtx(ctx).Error("Failed to run migrations", zap.Error(err))
+		panic(err)
+	}
+	if applied {
+		logger.GetLoggerFromCtx(ctx).Info("Database migrations completed successfully")
 	}
 
 	repo := repository.NewNotificationRepository(ctx, db)
