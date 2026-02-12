@@ -64,6 +64,46 @@ services:
     networks:
       - mynetwork
 
+  notification_service:
+    container_name: notification_container
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4051:4051"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DBNAME: ${POSTGRES_DBNAME}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+      RABBITMQ_CONNECTION_NAME: delayed_notifier
+      CONNECT_TIMEOUT: 10
+      HEARTBEAT: 60
+      PUBLISHER_EXCHANGE: delayed_notifications
+      DLX_EXCHANGE: dlx_notifications
+      CONSUMER_QUEUE: notifications_queue
+      ROUTING_KEY: notification.send
+      DLQ_ROUTING_KEY: notification.failed
+      HOST: 0.0.0.0
+      PORT: 4051
+      host: 0.0.0.0
+      port: 4051
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+    networks:
+      - mynetwork
+
 volumes:
   rabbitmq_data:
   postgres_data:

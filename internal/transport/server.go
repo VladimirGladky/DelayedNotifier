@@ -37,7 +37,7 @@ func (s *Server) Run() error {
 	v1.GET("/notify/:id", s.NotifyGetHandler())
 	v1.DELETE("/notify/:id", s.NotifyDeleteHandler())
 
-	return eng.Run(s.cfg.GetString("host") + ":" + s.cfg.GetString("port"))
+	return eng.Run(s.cfg.GetString("HOST") + ":" + s.cfg.GetString("PORT"))
 }
 
 func (s *Server) NotifyCreateHandler() gin.HandlerFunc {
