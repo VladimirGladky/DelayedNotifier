@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Delayed Notifier</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Delayed Notifier</h1>
+
+        <div class="card">
+            <h2 style="margin-bottom: 20px; color: #333;">Create Notification</h2>
+
+            <div class="success-message" id="successMessage"></div>
+            <div class="error-message" id="errorMessage"></div>
+
+            <form id="notificationForm">
+                <div class="form-group">
+                    <label for="chatId">Chat ID</label>
+                    <input type="number" id="chatId" name="chat_id" required placeholder="Enter Telegram chat ID">
+                </div>
+
+                <div class="form-group">
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message" required placeholder="Enter your notification message"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="time">Send Time (optional)</label>
+                    <input type="datetime-local" id="time" name="time">
+                    <div class="helper-text">Leave empty to send immediately</div>
+                </div>
+
+                <button type="submit">Create Notification</button>
+            </form>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="color: #333;">Notifications</h2>
+                <button class="refresh-btn" onclick="loadNotifications()">Refresh</button>
+            </div>
+            <div id="notificationsList" class="notifications-list">
+                <div class="empty-state">Loading notifications...</div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

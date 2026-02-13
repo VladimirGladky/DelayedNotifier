@@ -121,3 +121,32 @@ func (r *NotificationRepository) DeleteNotification(id string) error {
 		zap.String("notification_id", id))
 	return nil
 }
+
+func (r *NotificationRepository) GetAllNotifications() ([]*models.Notification, error) {
+	query := `
+		SELECT id, message, time, status, chat_id
+		FROM notifications
+	`
+
+	rows, err := r.db.QueryContext(r.ctx, query)
+	if err != nil {
+		logger.GetLoggerFromCtx(r.ctx).Error("Failed to get all notifications",
+			zap.Error(err))
+		return nil, fmt.Errorf("failed to get all notifications: %w", err)
+	}
+	defer rows.Close()
+
+	var notifications []*models.Notification
+	for rows.Next() {
+		nf := &models.Notification{}
+		err := rows.Scan(&nf.Id, &nf.Message, &nf.Time, &nf.Status, &nf.ChatId)
+		if err != nil {
+			logger.GetLoggerFromCtx(r.ctx).Error("Failed to scan notification",
+				zap.Error(err))
+			continue
+		}
+		notifications = append(notifications, nf)
+	}
+
+	return notifications, nil
+}

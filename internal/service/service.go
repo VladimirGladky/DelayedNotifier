@@ -23,6 +23,7 @@ type NotificationRepositoryInterface interface {
 	GetNotificationStatus(id string) (string, error)
 	DeleteNotification(id string) error
 	UpdateNotificationStatus(id string, status string) error
+	GetAllNotifications() ([]*models.Notification, error)
 }
 
 type DelayedNotifierService struct {
@@ -194,4 +195,8 @@ func (service *DelayedNotifierService) ProcessNotification(nf *models.Notificati
 	logger.GetLoggerFromCtx(service.ctx).Info("Notification sent successfully",
 		zap.String("notification_id", nf.Id))
 	return nil
+}
+
+func (service *DelayedNotifierService) GetAllNotifications() ([]*models.Notification, error) {
+	return service.repo.GetAllNotifications()
 }

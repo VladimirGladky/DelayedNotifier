@@ -16,6 +16,7 @@ type ServiceDelayedNotifierInterface interface {
 	GetNotificationStatus(id string) (string, error)
 	DeleteNotification(id string) error
 	ProcessNotification(nf *models.Notification) error
+	GetAllNotifications() ([]*models.Notification, error)
 }
 
 type Server struct {
@@ -31,11 +32,15 @@ func NewServer(ctx context.Context, cfg *config.Config, srv ServiceDelayedNotifi
 func (s *Server) Run() error {
 	eng := ginext.New("release")
 	eng.Use(ginext.Logger())
-	v1 := eng.Group("/api/v1")
 
+	eng.Static("/static", "./web/static")
+	eng.GET("/", s.ServeUI())
+
+	v1 := eng.Group("/api/v1")
 	v1.POST("/notify", s.NotifyCreateHandler())
 	v1.GET("/notify/:id", s.NotifyGetHandler())
 	v1.DELETE("/notify/:id", s.NotifyDeleteHandler())
+	v1.GET("/notifications", s.GetAllNotificationsHandler())
 
 	return eng.Run(s.cfg.GetString("HOST") + ":" + s.cfg.GetString("PORT"))
 }
@@ -93,5 +98,28 @@ func (s *Server) NotifyDeleteHandler() gin.HandlerFunc {
 			return
 		}
 		c.JSON(http.StatusOK, gin.H{"status": fmt.Sprintf("notify %s is deleted", id)})
+	}
+}
+
+func (s *Server) GetAllNotificationsHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+				return
+			}
+		}()
+		notifications, err := s.Service.GetAllNotifications()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, notifications)
+	}
+}
+
+func (s *Server) ServeUI() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.File("./web/templates/index.html")
 	}
 }
