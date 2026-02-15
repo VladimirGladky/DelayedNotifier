@@ -413,8 +413,88 @@ go run cmd/migrate/main.go down
 - **TTL**: 3600 секунд (1 час)
 - При запросе статуса сначала проверяется Redis, затем PostgreSQL
 
+## Тестирование
+
+Проект содержит unit-тесты для service и transport слоев с использованием моков.
+
+### Запуск тестов
+
+```bash
+# Запустить все тесты
+go test ./... -v
+
+# Запустить тесты с отчетом о покрытии
+go test ./... -cover
+
+# Запустить тесты только для service layer
+go test ./internal/service -v
+
+# Запустить тесты только для transport layer
+go test ./internal/transport -v
+
+# Сгенерировать HTML отчет о покрытии
+go tool cover -html=coverage.out -o coverage.html
+```
+
+### Покрытие кода тестами
+
+- **Service Layer**: 79.7% coverage
+- **Transport Layer**: 65.5% coverage
+
+### Генерация моков
+
+Проект использует `gomock` для создания моков. Моки генерируются автоматически с помощью `go:generate` директив.
+
+```bash
+# Установить mockgen (если еще не установлен)
+go install go.uber.org/mock/mockgen@latest
+
+# Сгенерировать все моки
+go generate ./...
+```
+
+### Структура тестов
+
+```
+internal/
+├── service/
+│   ├── service.go              # Основной код
+│   ├── service_test.go         # Unit-тесты
+│   └── mocks/                  # Сгенерированные моки
+│       ├── mock_dependencies.go
+│       └── mock_service.go
+├── transport/
+│   ├── server.go               # HTTP handlers
+│   └── server_test.go          # HTTP handler тесты
+└── repository/
+    └── mocks/                  # Моки для repository
+        └── mock_repository.go
+```
+
+### Тестируемые компоненты
+
+#### Service Layer (`internal/service/service_test.go`)
+- ✅ CreateNotification (success, валидация времени, ошибки публикации)
+- ✅ GetNotificationStatus (из кэша, из БД, валидация)
+- ✅ DeleteNotification (success, валидация, ошибки БД)
+- ✅ GetAllNotifications (success, ошибки)
+- ✅ ProcessNotification (success, ошибки Telegram, валидация)
+
+#### Transport Layer (`internal/transport/server_test.go`)
+- ✅ NotifyCreateHandler (success, невалидный JSON, ошибки сервиса)
+- ✅ NotifyGetHandler (success, ошибки)
+- ✅ NotifyDeleteHandler (success, ошибки)
+- ✅ GetAllNotificationsHandler (success, ошибки)
+
+### Зависимости для тестирования
+
+- `github.com/stretchr/testify/require` - assertions
+- `go.uber.org/mock/gomock` - генерация и использование моков
+- `net/http/httptest` - тестирование HTTP handlers
+
 ## Мониторинг и отладка
 
 - **Логи**: Сервис использует структурированное логирование Uber Zap
 - **RabbitMQ Management**: Доступен по адресу http://localhost:15672 для мониторинга очередей
 - **Redis Insight**: Доступен по адресу http://localhost:5540 для просмотра кэша
+

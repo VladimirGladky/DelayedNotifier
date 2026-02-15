@@ -1,5 +1,7 @@
 package transport
 
+//go:generate mockgen -source=server.go -destination=../service/mocks/mock_service.go -package=mocks ServiceDelayedNotifierInterface
+
 import (
 	"DelayedNotifier/internal/models"
 	"context"

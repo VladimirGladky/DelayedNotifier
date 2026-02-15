@@ -1,5 +1,8 @@
 package service
 
+//go:generate mockgen -source=service.go -destination=mocks/mock_dependencies.go -package=mocks RabbitMQProducerInterface,TelegramClientInterface,RedisClientInterface
+//go:generate mockgen -source=service.go -destination=../repository/mocks/mock_repository.go -package=mocks NotificationRepositoryInterface
+
 import (
 	"DelayedNotifier/internal/models"
 	"DelayedNotifier/internal/rabbitmq"
@@ -26,13 +29,27 @@ type NotificationRepositoryInterface interface {
 	GetAllNotifications() ([]*models.Notification, error)
 }
 
+type RabbitMQProducerInterface interface {
+	Publish(data []byte, ctx context.Context, routingKey string, delay time.Duration) error
+}
+
+type TelegramClientInterface interface {
+	SendMessage(chatID int64, text string) error
+}
+
+type RedisClientInterface interface {
+	Get(ctx context.Context, key string) (string, error)
+	SetWithExpiration(ctx context.Context, key string, value any, expiration time.Duration) error
+	Del(ctx context.Context, key string) error
+}
+
 type DelayedNotifierService struct {
 	repo           NotificationRepositoryInterface
 	ctx            context.Context
-	producer       *rabbitmq.Producer
+	producer       RabbitMQProducerInterface
 	cfg            *config.Config
-	telegramClient *telegram.Client
-	redis          *wbfredis.Client
+	telegramClient TelegramClientInterface
+	redis          RedisClientInterface
 }
 
 func New(producer *rabbitmq.Producer, repo NotificationRepositoryInterface, telegramClient *telegram.Client, redisClient *wbfredis.Client, ctx context.Context, cfg *config.Config) *DelayedNotifierService {
